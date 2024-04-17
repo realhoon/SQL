@@ -184,3 +184,84 @@ SELECT count(*)
 			join employees e on c.salesRepEmployeeNumber = e.employeeNumber
 			join offices o on e.officeCode = o.officeCode
 		where o.officeCode in (1, 2)) sub;
+
+-- 위 결과를 담당이 1, 2번 아닌 office에 속한 종업원 담당 소비자 이름 개수로 나누기
+select (select count(customerNumber)
+				from classicmodels.customers c 
+					join employees e on c.salesRepEmployeeNumber = e.employeeNumber
+					join offices o on e.officeCode = o.officeCode
+				where e.officeCode in (1, 2)) /
+		(select count(customerNumber)
+			from classicmodels.customers c 
+				join employees e on c.salesRepEmployeeNumber = e.employeeNumber
+				join offices o on e.officeCode = o.officeCode
+			where e.officeCode not in (1, 2)) ;
+
+-- 2003년 USA 사는 사람 총 구매액과 Germany에 사는 사람 총 구매액 차이
+select 	
+(select sum(amount)
+	from classicmodels.customers c 
+		join payments p on c.customerNumber = p.customerNumber 
+	where p.paymentDate >= '2003-01-01' and p.paymentDate <'2004-01-01' and c.country ='USA'
+)
+-
+(select sum(amount) as Germany
+	from classicmodels.customers c 
+		join payments p on c.customerNumber = p.customerNumber 
+	where p.paymentDate >= '2003-01-01' and p.paymentDate <'2004-01-01' and c.country ='Germany')
+
+-- 위 결과를 취소된 금액으로 바꾸기
+select 
+(select sum(amount)
+		from classicmodels.customers c 
+			join classicmodels.payments p on c.customerNumber = p.customerNumber
+			join classicmodels.orders o on c.customerNumber = o.customerNumber
+		where o.status = 'Cancelled' and p.paymentDate >= '2003-01-01' and p.paymentDate <'2004-01-01' and c.country = 'USA')
+-
+(select if (GermanySum = 'NULL', 0, 1)			/* select if (GermanySum = 'NULL', 0, 1) */
+from(
+select sum(amount) as GermanySum
+	from classicmodels.customers c 
+		join classicmodels.payments p on c.customerNumber = p.customerNumber
+		join classicmodels.orders o on c.customerNumber = o.customerNumber
+	where o.status = 'Cancelled' and p.paymentDate >= '2003-01-01' and p.paymentDate <'2004-01-01' and c.country = 'Germany')sub) ;
+
+
+-- 2003년 주문액이 70이상이고, 1/2/3번 회사에 속한 상품명, 주문일자, 주문액 구하기(주문일자 오름차순 기준으로)
+select productName, orderDate, amount
+	from classicmodels.customers c 
+		join classicmodels.orders o on c.customerNumber = o.customerNumber 
+		join classicmodels.employees e on c.salesRepEmployeeNumber = e.employeeNumber
+		join classicmodels.payments p on c.customerNumber = p.customerNumber
+		join classicmodels.orderdetails o2 on o.orderNumber = o2.orderNumber
+		join classicmodels.products p2 on o2.productCode = p2.productCode
+	where p.amount >= 70 and o.orderDate > '2003-01-01' and o.orderDate < '2004-01-01' and e.officeCode in (1, 2, 3)
+	order by o.orderDate ASC;
+
+-- 가장 구매액이 높은  사람 100명의 이름과 전화번호, 주소를 출력하되, 구매액 기준 내림차순으로 정렬하기
+-- (심화)addressLine1과 addressLine2를 붙여서 출력하되, addressLine2가 null이면 ' '(공란)으로 해서
+select customerName, phone, addressLine1, amount
+	from classicmodels.customers c 
+		join classicmodels.payments p on c.customerNumber = p.customerNumber
+	order by p.amount DESC
+	limit 100;
+
+-- 판매액이 높은 종업원의 풀네임과 officeCode(나라로 출력), JobTitle, email 그리고 판매한 나라(customer)을 출력하고, 판매액 기준으로 내림차순으로 정렬하기.
+-- (심화)종업원별 amount도 함께 출력 가능한지
+select distinct concat(firstName, ' ', lastName), jobTitle, email, o.country as '종업원소속', c.country as '고객소속'
+	from classicmodels.customers c 
+		join classicmodels.payments p on c.customerNumber = p.customerNumber 
+		join classicmodels.employees e on c.salesRepEmployeeNumber = e.employeeNumber
+		join classicmodels.offices o on e.officeCode = o.officeCode
+	order by p.amount DESC ;
+
+-- 2003년 주문량이 가장 높았던 5개 productName, productline, text Description 을  주문량 내림차순으로 출력하기. 
+-- (심화)각 상품별 주문량도 표시가 가능한지
+select distinct productName, p.productLine, textDescription
+	from classicmodels.products p 
+		join classicmodels.productlines p2 on p.productLine = p2.productLine 
+		join classicmodels.orderdetails o on p.productCode = o.productCode
+		join classicmodels.orders o2 on o.orderNumber = o2.orderNumber
+	where o2.orderDate >= '2003-01-01' and o2.orderDate < '2004-01-01'
+	order by quantityOrdered DESC
+	limit 5;
