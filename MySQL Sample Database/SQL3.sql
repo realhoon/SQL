@@ -1,100 +1,145 @@
-
-SELECT customerName, orderdate, productname 
-	FROM classicmodels.orders o 
-	join classicmodels.customers c on o.customerNumber = c.customerNumber
-	join classicmodels.orderdetails o2  on o.orderNumber  = o2.orderNumber 
-	join classicmodels.products p  on o2.productCode  = p.productCode 
-	WHERE o.orderDate >= "2003-01-01" and o.orderDate < "2004-01-01"
-	limit 100;
-	
-
-SELECT distinct customerName 
+select customerName, orderDate, productName
 	from classicmodels.customers c 
-	join classicmodels.orders o on c.customerNumber = o.customerNumber 
-	WHERE o.orderDate >= DATE_SUB(CURDATE(), INTERVAL 20 YEAR);
+		join classicmodels.orders o on c.customerNumber = o.customerNumber 
+		join classicmodels.orderdetails o2 on o.orderNumber = o2.orderNumber 
+		join classicmodels.products p on o2.productCode = p.productCode 
+		where o.orderDate >= '2003-01-01' and o.orderDate < '2004-01-01'
+		limit 100;
+		
 
+	
+-- Date 다루기
+	
+select date('2023-04-14 09:45:00');
+select time('2023-04-14 09:45:00');
+
+select now();
+select CURDATE();
+select CURTIME();
+
+select DATEDIFF('2021-07-09 00:00:00', '1991-07-29 14:00:00');
+select TIMEDIFF('1991-07-29 14:00:00', '1991-07-29 00:00:00'); 
+
+select DATE_ADD('2023-04-14', INTERVAL 10 day);
+select DATE_SUB('2023-04-14', INTERVAL 5 day); 
+
+
+-- 오늘부터 한달전 데이터 가져오기
+select *
+	from classicmodels.orders o 
+	where orderDate >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH);
+	
+-- 20년 이내에 주문한 사람들의 이름을 unique 하게 가져오세요
+select distinct customerName
+	from classicmodels.customers c 
+		join classicmodels.orders o on c.customerNumber = o.customerNumber 
+		where o.orderDate >= DATE_SUB(CURDATE(), INTERVAL 20 YEAR); 
+
+-- 마지막 주문일
 select max(orderDate)
 	from classicmodels.orders o ;
 
-SELECT distinct customerName 
+-- 마지막 주문일로부터 6개월년 이내에 주문한 사람들의 이름을 가져오세요
+select DISTINCT customerName 
 	from classicmodels.customers c 
-	join classicmodels.orders o on c.customerNumber = o.customerNumber 
-	WHERE o.orderDate >= DATE_SUB((select max(orderDate)
-	from classicmodels.orders o), INTERVAL 6 MONTH);
-	
-SELECT customerName, sum(amount)
-	from classicmodels.customers c 
-	join classicmodels.payments p on c.customerNumber = p.customerNumber
-	group by customerName ;
-	
-SELECT customerName, sum(amount)
-	from classicmodels.customers c 
-	join classicmodels.payments p on c.customerNumber = p.customerNumber 
-	where p.paymentDate >= DATE_SUB(CURDATE(), INTERVAL 20 YEAR) 
-	group by customerName ;
-	
-SELECT customerName, sum(amount)
-	from classicmodels.customers c 
-	join classicmodels.payments p on c.customerNumber = p.customerNumber 
-	where p.paymentDate >= DATE_SUB(CURDATE(), INTERVAL 20 YEAR) 
-	group by customerName
-	ORDER by sum(amount) DESC ;
+		join classicmodels.orders o on c.customerNumber = o.customerNumber 
+	where o.orderDate >= DATE_SUB((select max(orderDate) 
+		  from classicmodels.orders o), INTERVAL 6 month );
 
-SELECT productLine, max(buyPrice) as m
-	from classicmodels.products p 
-	group by productLine 
-	ORDER by m DESC  ;
-	
-SELECT productName, productLine
-	from classicmodels.products p 
-	group by productLine  ;
+ select 
+ 	YEAR('2023-04-14') as year,
+ 	MONTH('2023-04-14') as month,
+ 	WEEKOFYEAR('2023-04-14') as week_of_year;
 
-SELECT productLine, max(buyPrice) as maxprice
-	from classicmodels.products p 
-	group by productLine 
-	ORDER by maxprice DESC ;
-	
-select A.*, p.productName
-from 
-(SELECT productLine, max(buyPrice) as m
-	from classicmodels.products p 
-	group by productLine 
-	ORDER by m desc) A join products p on A.productLine = p.productLine and A.m = p.buyPrice;
-	
-select c.country, p.productLine, sum(amount) 
+-- 최근 한달간 구매내역이 있는 유저를 출력
+ select distinct customerName
+ 	from classicmodels.customers c 
+ 		join classicmodels.orders o on c.customerNumber = o.customerNumber 
+	where o.orderDate >= DATE_SUB((select max(orderDate) from classicmodels.orders o), INTERVAL 1 MONTH); 
+ 
+
+-- Group by
+
+-- 유저별로 주문액의 총합을 가져오자
+select customerName, sum(amount)
 	from classicmodels.customers c 
-	join classicmodels.orders o on c.customerNumber = o.customerNumber 
-	join classicmodels.orderdetails o2 on o.orderNumber = o2.orderNumber 
-	join classicmodels.products p on o2.productCode = p.productCode
-	join classicmodels.payments p2 on c.customerNumber = p2.customerNumber 
-	GROUP by c.country, p.productLine ;
-	
-select c.country, p.productLine, sum(amount), e.officeCode 
+		join classicmodels.payments p on c.customerNumber = p.customerNumber 
+		group by customerName; 
+		
+-- 위의 결과에서 20년이내 결과만출력
+select customerName, sum(amount)
 	from classicmodels.customers c 
-	join classicmodels.orders o on c.customerNumber = o.customerNumber 
-	join classicmodels.orderdetails o2 on o.orderNumber = o2.orderNumber 
-	join classicmodels.products p on o2.productCode = p.productCode
-	join classicmodels.payments p2 on c.customerNumber = p2.customerNumber 
-	join classicmodels.employees e on c.salesRepEmployeeNumber = e.employeeNumber
+		join classicmodels.payments p on c.customerNumber = p.customerNumber 
+		join classicmodels.orders o on c.customerNumber = o.customerNumber 
+		where o.orderDate >= DATE_SUB(CURDATE(), INTERVAL 20 YEAR) 
+		group by customerName ;
+
+-- 위의 결과에서 높은 이름순으로 출력
+select customerName, sum(amount)
+	from classicmodels.customers c 
+		join classicmodels.payments p on c.customerNumber = p.customerNumber 
+		join classicmodels.orders o on c.customerNumber = o.customerNumber 
+		where o.orderDate >= DATE_SUB(CURDATE(), INTERVAL 20 YEAR) 
+		group by customerName 
+		order by sum(amount) DESC;
+	
+-- 상품카테고리별로 금액이 가장높은 금액을 가져오세요
+select productLine, max(buyPrice) as maxprice
+	from classicmodels.products p 
+	group by productLine
+	order by maxprice DESC ;
+
+-- 위 결과에서 상품명도 함께 출력 (error)
+SELECT A.*, p.productName
+	from(
+	select productLine, max(buyPrice) as m
+		from classicmodels.products p
+		group by productLine
+		order by m desc) A join products p on A.productLine = p.productLine and A.m = p.buyPrice ;
+
+	
+-- 다른방법 
+select productLine, buyPrice, productName
+	from classicmodels.products p 
+	where (productLine, buyPrice) in (select productLine, max(buyPrice) from classicmodels.products p group by productLine);
+
+-- 국가별 상품카테고리별, 주문액의 합
+select c.country, p2.productLine, sum(p.amount)
+	from classicmodels.customers c 
+		join classicmodels.payments p on c.customerNumber = p.customerNumber 
+		join classicmodels.orders o on c.customerNumber = o.customerNumber 
+		join classicmodels.orderdetails o2 on o.orderNumber = o2.orderNumber 
+		join classicmodels.products p2 on o2.productCode = p2.productCode 
+	group by c.country, p2.productLine ;
+
+-- 위의 결과에서 office code가 1,2 인 employ에 의해서 발생된결과들로 정렬
+select c.country, p2.productLine, sum(p.amount), e.officeCode 
+	from classicmodels.customers c 
+		join classicmodels.payments p on c.customerNumber = p.customerNumber 
+		join classicmodels.orders o on c.customerNumber = o.customerNumber 
+		join classicmodels.orderdetails o2 on o.orderNumber = o2.orderNumber 
+		join classicmodels.products p2 on o2.productCode = p2.productCode
+		join classicmodels.employees e on c.salesRepEmployeeNumber = e.employeeNumber 
 	where e.officeCode in (1, 2)
-	GROUP by c.country, p.productLine ;
-	
+	group by c.country, p2.productLine ;
+
+-- 제품별로 구매된 횟수 카운트 하기
 select p.productName, count(o.orderNumber)
-	from classicmodels.customers c 
-	join classicmodels.orders o on c.customerNumber = o.customerNumber 
-	join classicmodels.orderdetails o2 on o.orderNumber = o2.orderNumber 
-	join classicmodels.products p on o2.productCode = p.productCode
-	join classicmodels.payments p2 on c.customerNumber = p2.customerNumber 
-	GROUP by p.productName;
+	from classicmodels.customers c  
+		join classicmodels.orders o on c.customerNumber = o.customerNumber 
+		join classicmodels.orderdetails o2 on o.orderNumber = o2.orderNumber 
+		join classicmodels.products p on o2.productCode = p.productCode
+	group by p.productName ;
 	
-SELECT c.customerName, count(*)
+-- 유저별로 구매한 주문수 구하기
+select c.customerName, count(*)
 	from classicmodels.customers c 
-	join classicmodels.orders o on c.customerNumber = o.customerNumber 
-	join classicmodels.orderdetails o2 on o.orderNumber = o2.orderNumber 
-	GROUP by customerName ;
-	
-SELECT c.customerName, count(DISTINCT o2.productCode)
-	from classicmodels.customers c 
-	join classicmodels.orders o on c.customerNumber = o.customerNumber 
-	join classicmodels.orderdetails o2 on o.orderNumber = o2.orderNumber 
-	GROUP by customerName ;
+		join classicmodels.orders o on c.customerNumber = o.customerNumber 
+	group by c.customerName ;
+		
+-- 유저별로 구매한 고유한 상품개수 
+select c.customerName, count(distinct o2.productCode)
+	from classicmodels.customers c  
+		join classicmodels.orders o on c.customerNumber = o.customerNumber 
+		join classicmodels.orderdetails o2 on o.orderNumber = o2.orderNumber 
+	group by c.customerName ;
