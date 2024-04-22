@@ -24,12 +24,8 @@ with t1 as (select c.customerName, p.productName, count(*) as cnt
 		join classicmodels.products p on o2.productCode = p.productCode 
 	group by c.customerName, p.productName)
 select A.productName, A.a/B.b as '재구매율', B.b as '구매 유저수'
-	from (select productName, count(*) as a 
-			from t1
-			where cnt >= 2 
-			group by productName) as A right join (select productName, count(*) as b
-													from t1 
-													group by productName) as B on A.productName = B.productName ;
+	from (select productName, count(*) as a from t1 where cnt >= 2 group by productName) as A 
+			 right join (select productName, count(*) as b from t1 group by productName) as B on A.productName = B.productName ;
 													
 												
 -- t1										
