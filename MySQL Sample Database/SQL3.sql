@@ -143,3 +143,52 @@ select c.customerName, count(distinct o2.productCode)
 		join classicmodels.orders o on c.customerNumber = o.customerNumber 
 		join classicmodels.orderdetails o2 on o.orderNumber = o2.orderNumber 
 	group by c.customerName ;
+
+
+-- pb) 상품별 재구매수와 비율을 구하기 위한 여정
+-- sub_pb1) 유저별 상품별 구매수 카운트 하기
+select c.customerName, p.productName, count(*)  
+	from classicmodels.customers c  
+		join classicmodels.orders o on c.customerNumber = o.customerNumber 
+		join classicmodels.orderdetails o2 on o.orderNumber = o2.orderNumber 
+		join classicmodels.products p on o2.productCode = p.productCode
+	group by c.customerName, p.productName ;
+
+-- sub_pb2) 위 결과에서 2이상인것만 남기기
+select c.customerName, p.productName, count(*) as cnt
+	from classicmodels.customers c  
+		join classicmodels.orders o on c.customerNumber = o.customerNumber 
+		join classicmodels.orderdetails o2 on o.orderNumber = o2.orderNumber 
+		join classicmodels.products p on o2.productCode = p.productCode
+	group by c.customerName, p.productName
+	HAVING cnt >= 2;
+	
+-- sub_pb3) 다시 상품별로 유저수 카운트하기 → 상품별 재구매수
+select A.productName, count(A.cnt) as a
+	from
+		(select c.customerName, p.productName, count(*) as cnt
+			from classicmodels.customers c  
+				join classicmodels.orders o on c.customerNumber = o.customerNumber 
+				join classicmodels.orderdetails o2 on o.orderNumber = o2.orderNumber 
+				join classicmodels.products p on o2.productCode = p.productCode
+			group by c.customerName, p.productName
+			HAVING cnt >= 2) A
+	group by A.productName 
+	order by a DESC ;
+
+-- sub_pb4) 상품별 유저별 구매수를 이용해서 상품별 재구매율 구하기
+select A.productName, purchase_2, purchase_1, purchase_2/purchase_1 as repurchase_rate
+from (select A.productName, count(A.customerName) as purchase_2
+from (select c.customerName, p.productName, count(*) as cnt
+	from classicmodels.customers c 
+		join classicmodels.orders o on c.customerNumber = o.customerNumber 
+		join classicmodels.orderdetails o2 on o.orderNumber = o2.orderNumber 
+		join classicmodels.products p on o2.productCode = p.productCode 
+	group by c.customerName, p.productName 
+	having cnt >= 2) A group by A.productName) A right join (select p.productName, count(distinct c.customerName) as purchase_1
+	from classicmodels.customers c 
+		join classicmodels.orders o on c.customerNumber = o.customerNumber 
+		join classicmodels.orderdetails o2 on o.orderNumber = o2.orderNumber 
+		join classicmodels.products p on o2.productCode = p.productCode 
+	group by p.productName ) B on A.productName = B.productName ;
+
